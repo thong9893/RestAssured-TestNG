@@ -1,0 +1,7 @@
+<suite name="Regression" >
+    <test name="JIRA - E2E" >
+        <classes>
+            <class name="test.JiraIssueCRUD"/>
+        </classes>
+    </test>
+</suite>
