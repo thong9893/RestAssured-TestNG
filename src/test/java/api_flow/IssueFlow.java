@@ -9,6 +9,7 @@ import io.restassured.specification.RequestSpecification;
 import model.IssueFields;
 import model.IssueTransition;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.testng.Assert; // Import TestNG Assert
 import utils.ProjectInfo;
 
 import java.util.HashMap;
@@ -16,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 public class IssueFlow {
-    private static Map<String,String> transitionTypeMap = new HashMap<>();
+    private static Map<String, String> transitionTypeMap = new HashMap<>();
     private static final String issuePathPrefix = "/rest/api/3/issue";
     private RequestSpecification request;
     private String baseURI;
@@ -28,12 +29,12 @@ public class IssueFlow {
     private String status;
 
     static {
-        transitionTypeMap.put("11","To Do");
-        transitionTypeMap.put("21","In Progress");
-        transitionTypeMap.put("31","Done");
+        transitionTypeMap.put("11", "To Do");
+        transitionTypeMap.put("21", "In Progress");
+        transitionTypeMap.put("31", "Done");
     }
 
-    public IssueFlow(RequestSpecification request,String baseURI,String projectKey,String issueTypeStr) {
+    public IssueFlow(RequestSpecification request, String baseURI, String projectKey, String issueTypeStr) {
         this.request = request;
         this.baseURI = baseURI;
         this.projectKey = projectKey;
@@ -42,88 +43,103 @@ public class IssueFlow {
     }
 
     @Step("Creating Jira Issue")
-    public void createIssue(){
-        ProjectInfo projectInfo = new ProjectInfo(baseURI,projectKey);
+    public void createIssue() {
+        ProjectInfo projectInfo = new ProjectInfo(baseURI, projectKey);
         String taskTypeId = projectInfo.getIssueTypeId(issueTypeStr);
 
         int desiredLengths = 20;
-        boolean hasLetters = true;
-        boolean hasNumbers = true;
-        String randomSummary = RandomStringUtils.random(desiredLengths,hasLetters,hasNumbers);
+        String randomSummary = RandomStringUtils.random(desiredLengths, true, true);
 
         IssueContentBuilder issueContentBuilder = new IssueContentBuilder();
-        String issueFieldsContent = issueContentBuilder.build(projectKey,taskTypeId,randomSummary);
+        String issueFieldsContent = issueContentBuilder.build(projectKey, taskTypeId, randomSummary);
         issueFields = issueContentBuilder.getIssueFields();
 
-         this.response = request.body(issueFieldsContent).post(issuePathPrefix);
+        this.response = request.body(issueFieldsContent).post(issuePathPrefix);
 
-        Map<String,String> responseBody = JsonPath.from(response.asString()).get();
+
+        Assert.assertEquals(response.getStatusCode(), 201, "Failed to create Jira issue!");
+
+        Map<String, String> responseBody = JsonPath.from(response.asString()).get();
         createdIssueKey = responseBody.get("key");
+        Assert.assertNotNull(createdIssueKey, "Issue Key should not be null");
     }
+
     @Step("Verifying Jira Issue")
-    public void verifyIssueDetails(){
-        Map<String,String> issueInfo = getIssueInfo();
+    public void verifyIssueDetails() {
+        Map<String, String> issueInfo = getIssueInfo();
         String expectedSummary = issueFields.getFields().getSummary();
         String expectedStatus = status;
 
         String actualSummary = issueInfo.get("summary");
         String actualStatus = issueInfo.get("status");
-        System.out.println("expectedSummary : " + expectedSummary);
-        System.out.println("actualSummary : " + actualSummary);
-        System.out.println("expectedStatus : " + expectedStatus);
-        System.out.println("actualStatus : " + actualStatus);
+
+
+        Assert.assertEquals(actualSummary, expectedSummary, "Summary does not match!");
+        Assert.assertEquals(actualStatus, expectedStatus, "Status does not match!");
     }
-    @Step("Updating Jira Issue")
-    public void updateIssue(String issueStatusStr){
+
+    @Step("Updating Jira Issue to {0}")
+    public void updateIssue(String issueStatusStr) {
         String targetTransitionId = null;
         for (String transitionId : transitionTypeMap.keySet()) {
-            if (transitionTypeMap.get(transitionId).equalsIgnoreCase(issueStatusStr)){
+            if (transitionTypeMap.get(transitionId).equalsIgnoreCase(issueStatusStr)) {
                 targetTransitionId = transitionId;
                 break;
             }
         }
-        if (targetTransitionId == null){
-            throw new RuntimeException("[ERR] provided issue status string is not supported");
-        }
 
-        String issueTransitionPath = issuePathPrefix + "/"+ createdIssueKey + "/transitions";
+        Assert.assertNotNull(targetTransitionId, "[ERR] Provided issue status '" + issueStatusStr + "' is not supported");
+
+        String issueTransitionPath = issuePathPrefix + "/" + createdIssueKey + "/transitions";
         IssueTransition.Transition transition = new IssueTransition.Transition(targetTransitionId);
         IssueTransition issueTransition = new IssueTransition(transition);
         String transitionBody = BodyJSONBuilder.getJSONContent(issueTransition);
 
-
+        // Verify status code 204 (No Content) sau khi update transition thành công
         request.body(transitionBody).post(issueTransitionPath).then().statusCode(204);
 
-        Map<String,String> issueInfo = getIssueInfo();
+        Map<String, String> issueInfo = getIssueInfo();
         String actualIssueStatus = issueInfo.get("status");
         String expectedIssueStatus = transitionTypeMap.get(targetTransitionId);
-        System.out.println("actualIssueStatus : " + actualIssueStatus);
-        System.out.println("expectedIssueStatus : " + expectedIssueStatus);
+
+        Assert.assertEquals(actualIssueStatus, expectedIssueStatus, "Updated status does not match!");
     }
+
     @Step("Deleting Jira Issue")
-    public void deleteIssue(){
+    public void deleteIssue() {
         String path = issuePathPrefix + "/" + createdIssueKey;
-        request.delete(path);
+
+
+        Response deleteResponse = request.delete(path);
+        Assert.assertEquals(deleteResponse.getStatusCode(), 204, "Failed to delete issue!");
+
 
         response = request.get(path);
+        Assert.assertEquals(response.getStatusCode(), 404, "Issue still exists after deletion!");
+
         Map<String, List<String>> noExistingIssueRes = JsonPath.from(response.body().asString()).get();
-        List<String> errorMessage =  noExistingIssueRes.get("errorMessages");
-        System.out.println("Return error message : " + errorMessage.get(0));
+        List<String> errorMessages = noExistingIssueRes.get("errorMessages");
+
+        Assert.assertTrue(errorMessages.size() > 0, "Error messages list should not be empty");
+        Assert.assertEquals(errorMessages.get(0), "Issue does not exist or you do not have permission to see it.", "Error message mismatch!");
     }
-    private Map<String,String> getIssueInfo(){
-        String getIssuePath = issuePathPrefix + "/" + createdIssueKey ;
+
+    private Map<String, String> getIssueInfo() {
+        String getIssuePath = issuePathPrefix + "/" + createdIssueKey;
         Response getResponse = request.body("").get(getIssuePath);
 
-        Map<String,Object> fields = JsonPath.from(getResponse.getBody().asString()).get("fields");
-        String actualSummary = fields.get("summary").toString();
-        Map<String,Object> status = (Map<String,Object>)fields.get("status");
-        Map<String,Object> statusCategory = (Map<String,Object>) fields.get("statusCategory");
-        String actualStatus = statusCategory.get("name").toString();
+        Assert.assertEquals(getResponse.getStatusCode(), 200, "Failed to get issue details!");
 
-        Map<String,String> issueInfo = new HashMap<>();
-        issueInfo.put("summary",actualSummary);
-        issueInfo.put("status",actualStatus);
+        Map<String, Object> fields = JsonPath.from(getResponse.getBody().asString()).get("fields");
+        String actualSummary = fields.get("summary").toString();
+
+
+        Map<String, Object> statusObj = (Map<String, Object>) fields.get("status");
+        String actualStatus = statusObj.get("name").toString();
+
+        Map<String, String> issueInfo = new HashMap<>();
+        issueInfo.put("summary", actualSummary);
+        issueInfo.put("status", actualStatus);
         return issueInfo;
     }
-
 }

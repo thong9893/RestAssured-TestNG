@@ -19,7 +19,7 @@ public class BaseTest implements RequestCapability {
     public void beforeSuite(){
         encodedCredStr = AuthenticationHandler.encodedCredStr(ENV.email,ENV.token);
         baseUri = "https://thongluminh.atlassian.net";
-        projectKey = "RA";
+        projectKey = "RES";
     }
     @BeforeTest
     public void beforeTest(){

@@ -2,6 +2,9 @@ package test;
 
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
+import model.ENV;
+import model.RequestCapability;
+import org.apache.commons.codec.binary.Base64;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -21,5 +24,8 @@ public class SimpleTest {
         response.then().body("id",equalTo(1));
         response.then().body("title",equalTo("delectus aut autem"));
         response.then().body("completed",equalTo(false));
+
+
+
     }
 }
