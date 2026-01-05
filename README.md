@@ -2,10 +2,19 @@
 
 This project is an automated API test suite (Java + Maven) using `rest-assured` and `TestNG` to perform CRUD tests for Jira issues on Jira Cloud.
 
+Reference link : https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-issueidorkey-get
+
+Used API for this demo project : 
++ Get project &nbsp; -  &nbsp;   GET   /rest/api/3/project/{projectIdOrKey} 
++ Get issue &nbsp; -  &nbsp;    GET   /rest/api/3/issue/{issueIdOrKey}   
++ Create issue &nbsp; -  &nbsp; POST  /rest/api/3/issue                    
++ Update issue &nbsp; -  &nbsp;  POST  /rest/api/3/issue/{issueIdOrKey}/transitions  
++ Delete issue &nbsp; -  &nbsp;  DEL    /rest/api/3/issue/{issueIdOrKey}  
+    
+
 ## Prerequisites
 - Java 17 (JDK) — check with `java --version`.
 - Maven (>= 3.6) — check with `mvn -v`.
-- (Optional) Allure CLI to view test reports: https://docs.qameta.io/allure/.
 
 ## Key Structure
 - `pom.xml` — Maven configuration and dependencies.
@@ -20,7 +29,7 @@ This project is an automated API test suite (Java + Maven) using `rest-assured` 
 Edit the credentials in `src/test/java/model/ENV.java` and set `email` and `token` (Jira Cloud API token). The `AuthenticationHandler` uses these values to create the Base64-encoded authentication header.
 
 ## Run Tests (local)
-Open a terminal in the project folder (`D:\source_project\auto_test\rest-assured`) and run:
+Open a terminal in the project folder  and run:
 
 ```bash
 mvn -v
@@ -35,21 +44,5 @@ TestNG reports will be available under `target/surefire-reports/`. If Allure is 
 
 ```bash
 allure serve allure-results
-```
 
-Or generate a static report and open it:
 
-```bash
-allure generate allure-results -o allure-report
-allure open allure-report
-```
-
-## Notes & Tips
-- Ensure `ENV.email` and `ENV.token` are set correctly before running tests.
-- If you see Java compilation errors, verify `JAVA_HOME` points to a JDK 17 installation.
-- `pom.xml` has been updated to target Java 17 and includes the `maven-surefire-plugin` to run tests.
-
-If you want, I can:
-- Run `mvn test` now (will require valid credentials to call the real API).
-- Add an example `ENV.java` stub in the repo.
-- Create a PowerShell script to run tests and open Allure on Windows.
