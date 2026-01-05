@@ -2,7 +2,7 @@
 
 This project is an automated API test suite (Java + Maven) using `rest-assured` and `TestNG` to perform CRUD tests for Jira issues on Jira Cloud.
 
-Reference link : https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-issueidorkey-get
+Reference Jira Cloud API link : [API-link](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-issueidorkey-get)
 
 Used API for this demo project : 
 + Get project &nbsp; -  &nbsp;   GET   /rest/api/3/project/{projectIdOrKey} 
